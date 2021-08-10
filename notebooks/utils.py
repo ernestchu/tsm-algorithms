@@ -35,7 +35,7 @@ def naive_tsm(x, sr: int, rate, win_length=5e-2):
     args:
       x(np.ndarray): raw audio signal
       sr(int): sample rate
-      rate(scalar): scale rate
+      rate(scalar): scaling factor. If `rate > 1`, then the signal is sped up. If `rate < 1`, then the signal is slowed down.
       win_length(scalar, optional): window length in second. Default: `5e-2`
     notes:
       - rate other than 1, 2, 0.5 are under development
@@ -49,19 +49,8 @@ def naive_tsm(x, sr: int, rate, win_length=5e-2):
 
     windows = sliding_window_view(x, (x.shape[0], raw_win_length), writeable=False)[0]
 
-    if rate == 2:
-        flip = True
-        for m in range(math.floor(x.shape[1]/raw_win_length)):
-            window = windows[m*raw_win_length]
-            if flip:
-                x_scaled[:, (m//2)*raw_win_length:(m//2+1)*raw_win_length] = window.copy()
-            flip = not flip
-        return x_scaled
-    
-    if rate == 0.5:
-        for m in range(math.floor(x.shape[1]/raw_win_length)):
-            window = windows[m*raw_win_length]
-            x_scaled[:, (m*2)*raw_win_length:(m*2+2)*raw_win_length] = np.tile(window.copy(), 2)
-        return x_scaled
+    for m in range(math.floor(x_scaled.shape[1]/raw_win_length)-1): # minus 1 to prevent out of bound
+        window = windows[math.floor(m*raw_win_length*rate)]
+        x_scaled[:, m*raw_win_length:(m+1)*raw_win_length] = window.copy()
+    return x_scaled
         
-    raise Exception("Sorry, rate other than 1, 2, 0.5 are under development")

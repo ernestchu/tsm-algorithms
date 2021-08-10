@@ -37,8 +37,6 @@ def naive_tsm(x, sr: int, rate, win_length=5e-2):
       sr(int): sample rate
       rate(scalar): scaling factor. If `rate > 1`, then the signal is sped up. If `rate < 1`, then the signal is slowed down.
       win_length(scalar, optional): window length in second. Default: `5e-2`
-    notes:
-      - rate other than 1, 2, 0.5 are under development
     '''
     if rate == 1:
         return x

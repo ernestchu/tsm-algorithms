@@ -49,6 +49,39 @@ def naive_tsm(x, sr: int, rate, win_length=5e-2):
 
     for m in range(math.floor(x_scaled.shape[1]/raw_win_length)-1): # minus 1 to prevent out of bound
         window = windows[math.floor(m*raw_win_length*rate)]
-        x_scaled[:, m*raw_win_length:(m+1)*raw_win_length] = window.copy()
+        x_scaled[:, m*raw_win_length:(m+1)*raw_win_length] = window
     return x_scaled
         
+
+def OLA(x, sr: int, rate, win_length=5e-2):
+    '''
+    args:
+      x(np.ndarray): raw audio signal
+      sr(int): sample rate
+      rate(scalar): scaling factor. If `rate > 1`, then the signal is sped up. If `rate < 1`, then the signal is slowed down.
+      win_length(scalar, optional): window length in second. Default: `5e-2`
+    '''
+    def apply_hann_window(x, N):
+        assert len(x.shape) == 2
+        hann_window = np.tile(
+            np.sin(np.pi * np.arange(x.shape[1]) / N) ** 2,
+            (x.shape[0], 1)
+        )
+        return (x * hann_window)
+    
+    if rate == 1:
+        return x
+    
+    raw_win_length = int(5e-2 * sr)
+    
+    x_scaled  = np.zeros((x.shape[0], math.ceil(x.shape[1]/rate)))
+
+    windows = sliding_window_view(x, (x.shape[0], raw_win_length), writeable=False)[0]
+
+    for m in range(math.floor(x_scaled.shape[1]/(raw_win_length/2))-3): # minus 3 to prevent out of bound
+        filtered_window = apply_hann_window(
+            windows[math.floor(m*raw_win_length*rate/2)],
+            raw_win_length
+        )
+        x_scaled[:, int(m/2*raw_win_length):int((m/2+1)*raw_win_length)] += filtered_window
+    return x_scaled.astype(np.int16)

@@ -1,7 +1,6 @@
 import audioread
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
-import math
 
 def load(file_path, start=None, end=None, verbose=False):
     '''
@@ -43,12 +42,17 @@ def naive_tsm(x, sr: int, rate, win_length=5e-2):
     
     raw_win_length = int(5e-2 * sr)
     
-    x_scaled  = np.zeros((x.shape[0], math.ceil(x.shape[1]/rate)), np.int16)
+    x_scaled  = np.zeros((x.shape[0], int(x.shape[1]/rate)), np.int16)
 
     windows = sliding_window_view(x, (x.shape[0], raw_win_length), writeable=False)[0]
 
-    for m in range(math.floor(x_scaled.shape[1]/raw_win_length)-1): # minus 1 to prevent out of bound
-        window = windows[math.floor(m*raw_win_length*rate)]
+    for m in range(x_scaled.shape[1]//raw_win_length):
+        window = (
+            windows[int(m*raw_win_length*rate)]
+            if int(m*raw_win_length*rate) < windows.shape[0] else
+            np.zeros_like(windows[0])
+        )
+        
         x_scaled[:, m*raw_win_length:(m+1)*raw_win_length] = window
     return x_scaled
         
@@ -74,13 +78,20 @@ def OLA(x, sr: int, rate, win_length=5e-2):
     
     raw_win_length = int(5e-2 * sr)
     
-    x_scaled  = np.zeros((x.shape[0], math.ceil(x.shape[1]/rate)))
+    x_scaled  = np.zeros((x.shape[0], int(x.shape[1]/rate)))
 
     windows = sliding_window_view(x, (x.shape[0], raw_win_length), writeable=False)[0]
 
-    for m in range(math.floor(x_scaled.shape[1]/(raw_win_length/2))-3): # minus 3 to prevent out of bound
+    for m in range(x_scaled.shape[1]//raw_win_length*2-1): 
+        # x_scaled.shape[1]/(raw_win_length/2)-1
+        # minus 1 to prevent out of bound since we're overlapping by half of frame
+        
         filtered_window = apply_hann_window(
-            windows[math.floor(m*raw_win_length*rate/2)],
+            (
+                windows[int(m*raw_win_length*rate/2)]
+                if int(m*raw_win_length*rate/2) < windows.shape[0] else
+                np.zeros_like(windows[0])
+            ),
             raw_win_length
         )
         x_scaled[:, int(m/2*raw_win_length):int((m/2+1)*raw_win_length)] += filtered_window
